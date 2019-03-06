@@ -1,6 +1,6 @@
 # Design Draft
 
-## Step 1: Start read file (local or remote) and File type checker: 
+## Step 1: Start read file (local or remote) and check File type: 
 
   - mp4 -> 2.1
   - avi -> 2.2
@@ -11,7 +11,6 @@
   - mpeg4 -> 2.7
   - rm -> 2.8
   - rmvb -> 2.9
-  - mmv -> 2.10
 
 ## Step 2: Fill data into raw data structure
   
@@ -51,8 +50,5 @@
 
 ...
 
-### 2.10 mmv
-
-...
 
 ## Format raw data to structured output
