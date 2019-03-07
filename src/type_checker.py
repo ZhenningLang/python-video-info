@@ -21,11 +21,10 @@ class VideoTypeEnum:
     MKV = 'VideoTypeEnum.MKV'
     MOV = 'VideoTypeEnum.MOV'
     WMV = 'VideoTypeEnum.WMV'
-    MPEG4 = 'MPVideoType.EG4'
     RM = 'VideoTypeEnum.RM'
     RMVB = 'RVideoType.MVB'
 
-    _all = ('mp4', 'avi', 'flv', 'mkv', 'mov', 'wmv', 'mpeg4', 'rm', 'rmvb',)
+    _all = ('mp4', 'avi', 'flv', 'mkv', 'mov', 'wmv', 'rm', 'rmvb',)
     # _all = ('mp4',)
 
     @staticmethod

@@ -8,9 +8,8 @@
   - mkv -> 2.4
   - mov -> 2.5
   - wmv -> 2.6
-  - mpeg4 -> 2.7
-  - rm -> 2.8
-  - rmvb -> 2.9
+  - rm -> 2.7
+  - rmvb -> 2.8
 
 ## Step 2: Fill data into raw data structure
   
@@ -38,15 +37,11 @@
 
 ...
 
-### 2.7 mpeg4
+### 2.7 rm
 
 ...
 
-### 2.8 rm
-
-...
-
-### 2.9 rmvb
+### 2.8 rmvb
 
 ...
 
