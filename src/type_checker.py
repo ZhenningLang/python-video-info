@@ -65,8 +65,9 @@ def check_video_type(reader, potential=VideoTypeEnum.UNKNOWN):
         first = potential.split('.')[-1].lower()
 
     for t, parser in video_parser_iter(first):
-        if parser.type_checking_passed(reader):
-            reader.refresh()
+        res = parser.type_checking_passed(reader)
+        reader.refresh()
+        if res:
             return VideoTypeEnum.get_type(t)
 
     raise Exception('Unrecognized video type!')

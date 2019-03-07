@@ -2,5 +2,5 @@
 
 
 def type_checking_passed(reader):
-    print('Not implemented flv.type_checking_passed')
-    return False
+    # first three bytes are 'FLV'
+    return reader.read(3) == b'\x46\x4C\x56'
