@@ -8,4 +8,4 @@ def type_checking_passed(reader):
     _ = reader.read(4)
     third_four_bytes = reader.read(4)
 
-    return first_four_bytes == b'\x52\x49\x46\x46' and third_four_bytes == b'\x41\x56\x49\x20'
+    return first_four_bytes == b'RIFF' and third_four_bytes == b'AVI '

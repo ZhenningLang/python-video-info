@@ -26,12 +26,37 @@ class TypeCheckerTest(unittest.TestCase):
             t = check_video_type(reader)
             self.assertEqual(t, VideoTypeEnum.AVI)
 
+    def test_flv(self):
+        with FileVideoReader(FLV_TEST_VIDEO_LOC) as reader:
+            t = check_video_type(reader)
+            self.assertEqual(t, VideoTypeEnum.FLV)
+
+    def test_mkv(self):
+        with FileVideoReader(MKV_TEST_VIDEO_LOC) as reader:
+            t = check_video_type(reader)
+            self.assertEqual(t, VideoTypeEnum.MKV)
+
+    def test_mov(self):
+        with FileVideoReader(MOV_TEST_VIDEO_LOC) as reader:
+            t = check_video_type(reader)
+            self.assertEqual(t, VideoTypeEnum.MOV)
+
     def test_mp4(self):
         with FileVideoReader(MP4_TEST_VIDEO_LOC) as reader:
             t = check_video_type(reader)
             self.assertEqual(t, VideoTypeEnum.MP4)
 
-    def test_flv(self):
-        with FileVideoReader(FLV_TEST_VIDEO_LOC) as reader:
+    def test_rm(self):
+        with FileVideoReader(RM_TEST_VIDEO_LOC) as reader:
             t = check_video_type(reader)
-            self.assertEqual(t, VideoTypeEnum.FLV)
+            self.assertEqual(t, VideoTypeEnum.RM)
+
+    def test_rmvb(self):
+        with FileVideoReader(RMVB_TEST_VIDEO_LOC) as reader:
+            t = check_video_type(reader)
+            self.assertEqual(t, VideoTypeEnum.RMVB)
+
+    def test_asf(self):
+        with FileVideoReader(WMV_TEST_VIDEO_LOC) as reader:
+            t = check_video_type(reader)
+            self.assertEqual(t, VideoTypeEnum.ASF)

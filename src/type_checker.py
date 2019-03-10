@@ -15,16 +15,16 @@ class VideoTypeEnum:
 
     UNKNOWN = 'VideoTypeEnum.UNKNOWN'
 
-    MP4 = 'VideoTypeEnum.MP4'
+    ASF = 'VideoTypeEnum.ASF'  # usually wmv
     AVI = 'VideoTypeEnum.AVI'
     FLV = 'VideoTypeEnum.FLV'
     MKV = 'VideoTypeEnum.MKV'
     MOV = 'VideoTypeEnum.MOV'
-    WMV = 'VideoTypeEnum.WMV'
-    RM = 'VideoTypeEnum.RM'
-    RMVB = 'RVideoType.MVB'
+    MP4 = 'VideoTypeEnum.MP4'
+    RM = 'VideoTypeEnum.RM_OR_RMVB'
+    RMVB = 'VideoTypeEnum.RM_OR_RMVB'
 
-    _all = ('mp4', 'avi', 'flv', 'mkv', 'mov', 'wmv', 'rm', 'rmvb',)
+    _all = ('asf', 'avi', 'flv', 'mkv', 'mov', 'mp4', 'rm', 'rmvb',)
     # _all = ('mp4',)
 
     @staticmethod
