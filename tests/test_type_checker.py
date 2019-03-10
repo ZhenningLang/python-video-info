@@ -4,6 +4,7 @@
 import os
 import unittest
 
+from parsers import asf, avi, flv, mkv, mov, mp4, rm, rmvb
 from src.input import FileVideoReader
 from src.type_checker import check_video_type, VideoTypeEnum
 
@@ -20,6 +21,11 @@ WMV_TEST_VIDEO_LOC = os.path.join(CURRENT_PATH, './test_videos/test_video.wmv')
 
 
 class TypeCheckerTest(unittest.TestCase):
+
+    def test_asf(self):
+        with FileVideoReader(WMV_TEST_VIDEO_LOC) as reader:
+            t = check_video_type(reader)
+            self.assertEqual(t, VideoTypeEnum.ASF)
 
     def test_avi(self):
         with FileVideoReader(AVI_TEST_VIDEO_LOC) as reader:
@@ -49,14 +55,9 @@ class TypeCheckerTest(unittest.TestCase):
     def test_rm(self):
         with FileVideoReader(RM_TEST_VIDEO_LOC) as reader:
             t = check_video_type(reader)
-            self.assertEqual(t, VideoTypeEnum.RM)
+            self.assertEqual(t, VideoTypeEnum.RM or VideoTypeEnum.RMVB)
 
     def test_rmvb(self):
         with FileVideoReader(RMVB_TEST_VIDEO_LOC) as reader:
             t = check_video_type(reader)
-            self.assertEqual(t, VideoTypeEnum.RMVB)
-
-    def test_asf(self):
-        with FileVideoReader(WMV_TEST_VIDEO_LOC) as reader:
-            t = check_video_type(reader)
-            self.assertEqual(t, VideoTypeEnum.ASF)
+            self.assertEqual(t, VideoTypeEnum.RM or VideoTypeEnum.RMVB)

@@ -1,6 +1,6 @@
 # python-video-info
 
-Get video info by pure python code
+Get video info by pure python codes
 
 ## Why I Do This?
 

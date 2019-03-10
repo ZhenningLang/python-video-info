@@ -9,3 +9,7 @@ def type_checking_passed(reader):
     third_four_bytes = reader.read(4)
 
     return first_four_bytes == b'RIFF' and third_four_bytes == b'AVI '
+
+
+def parse(reader):
+    return "In avi parser.parse"

@@ -21,3 +21,7 @@ def type_checking_passed(reader):
             else:
                 return False
     return False
+
+
+def parse(reader):
+    return "In mp4 parser.parse"

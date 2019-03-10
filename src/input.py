@@ -19,14 +19,17 @@ nor 'really' re-open the data stream.
 
 """
 
+import logging
 import os
+import sys
 
 import requests
 
 
-__all__ = ('FileVideoReader', 'RemoteFileReader')
+__all__ = ('VideoReader', 'FileVideoReader', 'RemoteFileReader')
 
 MAX_BUFFER_LENGTH = 1024 * 1024  # 1 Mb
+COMMON_VIDEO_EXTENDS = ('asf', 'avi', 'flv', 'mkv', 'mov', 'mp4', 'rm', 'rmvb',)
 
 
 class VideoReader:
@@ -88,6 +91,16 @@ class VideoReader:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    @property
+    def extend(self):
+        ext = self.video_loc.split('.')[-1]
+        if not ext:
+            return None
+        ext = ext.lower()
+        if ext in COMMON_VIDEO_EXTENDS:
+            return ext
+        return None
+
 
 class StreamAdapter:
 
@@ -137,6 +150,12 @@ class RemoteFileStreamAdapter(StreamAdapter):
 class RemoteFileReader(VideoReader):
 
     def __init__(self, video_loc: str, max_buffer_length: int=MAX_BUFFER_LENGTH):
+        if not video_loc.startswith('http') and not video_loc.startswith('ftp'):
+            logging.error('Add a proper schema to your remote location: \n'
+                          'https://{0} or\n'
+                          'http://{0} or\n'
+                          'ftp://{0}'.format(video_loc))
+            sys.exit(-1)
         super().__init__(video_loc, max_buffer_length)
 
     def _open_stream(self):
