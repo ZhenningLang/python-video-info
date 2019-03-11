@@ -51,6 +51,27 @@ class VideoReader:
     def _is_buffer_full(self):
         return len(self._buffer) > self.max_buffer_length
 
+    def read_int(self, num_of_byte: int=1, byteorder: str='big') -> int:
+        return int.from_bytes(self.read(num_of_byte), byteorder=byteorder)
+
+    def read_float(self, before_point_num_of_byte: int=1, after_point_num_of_byte: int=1,
+                   byteorder: str='big') -> float:
+        """
+        Examples:
+            b'\x01\x01' (1, 1)-> 1.00390625
+            b'\x11\x10' (1, 1)-> 17.0625
+            b'\x05\x80' (1, 1)-> 5.5
+        """
+        before_point_num = int.from_bytes(self.read(before_point_num_of_byte), byteorder=byteorder)
+        after_point_bits = bin(
+            int.from_bytes(self.read(after_point_num_of_byte), byteorder=byteorder)
+        ).lstrip('0b').zfill(after_point_num_of_byte * 8)  # for example: b'\x11' -> '00010001'
+        after_point_num = sum(float(after_point_bits[i]) * 2**(-1 - i) for i in range(after_point_num_of_byte * 8))
+        return before_point_num + after_point_num
+
+    def read_str(self, num_of_byte: int=1, charset='utf8') -> str:
+        return self.read(num_of_byte).decode(charset)
+
     def read(self, num_of_byte: int=1) -> bytes:
         """Read and return num_of_byte bytes of the video"""
         if self._is_buffer_full():
