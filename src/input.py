@@ -37,14 +37,22 @@ class VideoReader:
     def __init__(self, video_loc: str, max_buffer_length: int=MAX_BUFFER_LENGTH):
         self.video_loc = video_loc
         self.max_buffer_length = max_buffer_length
-        self.stream = None  # self.stream object should support read and close
+        self.stream = None  # self.stream object should support read and close, ref: StreamAdapter
         self._open_stream()
         assert hasattr(self.stream, 'read') and callable(self.stream.read), "self.stream does not has 'read' method"
         assert hasattr(self.stream, 'close') and callable(self.stream.close), "self.stream does not has 'close' method"
+        self.total_bytes = -1
+        self._init_total_bytes()
         self._buffer = bytearray()
         self._buffer_pointer = -1
+        logging.debug("Location: {}".format(self.video_loc))
+        logging.debug("Bytes: {}".format(self.total_bytes))
 
     def _open_stream(self):
+        """Initial self.stream"""
+        raise NotImplementedError()
+
+    def _init_total_bytes(self):
         """Initial self.stream"""
         raise NotImplementedError()
 
@@ -73,7 +81,12 @@ class VideoReader:
         return self.read(num_of_byte).decode(charset)
 
     def read(self, num_of_byte: int=1) -> bytes:
-        """Read and return num_of_byte bytes of the video"""
+        """Read and return num_of_byte bytes of the video
+        if num_of_byte >= 0, read num_of_byte bytes data
+        else, read to the end
+        """
+        if num_of_byte < 0:
+            return self.stream.read()
         if self._is_buffer_full():
             return self.stream.read(num_of_byte)
 
@@ -142,6 +155,9 @@ class FileVideoReader(VideoReader):
     def _open_stream(self):
         self.stream = open(self.video_loc, 'rb')
 
+    def _init_total_bytes(self):
+        self.total_bytes = os.path.getsize(self.video_loc)
+
 
 FAKE_HEADERS = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -159,9 +175,10 @@ class RemoteFileStreamAdapter(StreamAdapter):
         self.iter = response.iter_content(chunk_size=1, decode_unicode=False)
 
     def read(self, num_of_byte: int = 1) -> bytes:
-        b_list = []
-        for _ in range(num_of_byte):
-            b_list.append(next(self.iter))
+        if num_of_byte >= 0:
+            b_list = [next(self.iter) for _ in range(num_of_byte)]
+        else:
+            b_list = list(self.iter)
         return b''.join(b_list)
 
     def close(self):
@@ -177,11 +194,19 @@ class RemoteFileReader(VideoReader):
                           'http://{0} or\n'
                           'ftp://{0}'.format(video_loc))
             sys.exit(-1)
+        self.response = None
         super().__init__(video_loc, max_buffer_length)
 
     def _open_stream(self):
-        response = requests.get(self.video_loc, headers=FAKE_HEADERS, stream=True, timeout=10)
-        if response.status_code != 200:
+        self.response = requests.get(self.video_loc, headers=FAKE_HEADERS, stream=True, timeout=10)
+        if self.response.status_code != 200:
             raise Exception(
-                'Can not open the remote video, _response status code: %s' % response.status_code)
-        self.stream = RemoteFileStreamAdapter(response)
+                'Can not open the remote video, _response status code: %s' % self.response.status_code)
+        self.stream = RemoteFileStreamAdapter(self.response)
+
+    def _init_total_bytes(self):
+        # noinspection PyBroadException
+        try:
+            self.total_bytes = int(self.response.headers.get['Content-Length'])
+        except:  # noqa
+            pass
