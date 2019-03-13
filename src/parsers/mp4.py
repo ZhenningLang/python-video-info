@@ -11,6 +11,7 @@ MP4 is big endian
 
 import datetime
 import logging
+from pprint import pprint
 
 from consts import TYPE_CHECK_MAX_BYTES
 from excptions import EOF
@@ -21,6 +22,8 @@ FTYP_CONSEQUENCE_TYPES = (
     b'NDSS', b'NDXC', b'NDXH', b'NDXM', b'NDXP',
     b'NDXS', b'M4V '
 )
+
+BASE_DATETIME = datetime.datetime.strptime('1904-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
 
 
 def type_checking_passed(reader):
@@ -127,31 +130,48 @@ class FTYPBox(Box):
         self.compatible_brands = [self.read_str(4) for _ in range(compatible_brands_size // 4)]
 
 
-def find_moov_box(reader):
+def find_first_box_by_type(reader, wanted_box_type: str):
+    """
+
+    :param reader:
+    :param wanted_box_type:
+    :return: box_size: found box size
+             box_type: found box type, always equal to wanted_box_type
+             offset: offset of current reader compared with wanted box's beginning
+             ignored_size: total ignored box size in while loop
+    """
+    ignored_size = 0
     while True:
-        # If read to file end and moov is not found, read_box_size_and_type would raise an None Type error
+        # If read to file end and box is not found, read_box_size_and_type would raise an None Type error
         # So here I do not check box_size == 0
         box_size, box_type, offset = read_box_size_and_type(reader)
-        logging.debug('box_size: {} bytes, box_type: {}, offset: {}'.format(box_size, box_type, offset))
-        if box_type == 'moov':
-            return box_size, box_type, offset
+        logging.debug('Find first {} box: box_size: {} bytes, box_type: {}, offset: {}'.format(
+            wanted_box_type, box_size, box_type, offset))
+        if box_type == wanted_box_type:
+            return box_size, box_type, offset, ignored_size
+        ignored_size += box_size
         reader.read(box_size - offset)  # skip unused data
 
 
-class MVHDBox(Box):
+class HEADBox(Box):
 
     def __init__(self, reader, box_meta: BoxMeta=None):
         """
         Side effect: reader offset change
         """
         super().__init__(reader, box_meta)
-        assert self.box_type == 'mvhd'
         self.version = self.read_int(1)
         assert(self.version == 0)  # TODO: currently only support version=0
         self.flags = self.read_int(3)
-        base_datetime = datetime.datetime.strptime('1904-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
-        self.creation_time = base_datetime + datetime.timedelta(seconds=self.read_int(4))
-        self.modification_time = base_datetime + datetime.timedelta(seconds=self.read_int(4))
+        self.creation_time = BASE_DATETIME + datetime.timedelta(seconds=self.read_int(4))
+        self.modification_time = BASE_DATETIME + datetime.timedelta(seconds=self.read_int(4))
+
+
+class MVHDBox(HEADBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'mvhd'
         self.time_scale = self.read_int(4)
         self.duration = self.read_int(4)
         self.scaled_duration = round(self.duration / self.time_scale, 3)  # unit: s
@@ -165,6 +185,74 @@ class MVHDBox(Box):
         self.ignore_remained()
 
 
+class TKHDBox(HEADBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'tkhd'
+        self.track_id = self.read(4)
+        self.read(4)  # 4 bytes reserved
+        self.duration = self.read_int(4)
+        self.read(8)  # 8 bytes reserved
+        self.layer = self.read_int(2)
+        self.alternate_group = self.read_int(2)
+        self.volume = self.read_float(1, 1)
+        self.read(2)  # 2 bytes reserved
+        self.read(36)  # video transform matrix ???
+        self.width = self.read_float(2, 2)
+        self.height = self.read_float(2, 2)
+        self.ignore_remained()
+
+
+class MDHDBox(HEADBox):
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'mdhd'
+        self.time_scale = self.read_int(4)
+        self.duration = self.read_int(4)
+        self.fixed_duration = round(self.duration / self.time_scale, 2)
+        # self.language = self.read(2)
+        # self.pre_defined = self.read(2)
+        self.ignore_remained()
+
+
+class HDLRBox(Box):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'hdlr'
+        self.version = self.read_int(1)
+        assert(self.version == 0)  # TODO: currently only support version=0
+        self.flags = self.read_int(3)
+        self.read(4)  # self.pre_defined
+        self.handler_type = self.read_str(4)  # vide, soun, hint
+        self.read(12)  # reserved
+        if self.box_size - self.offset > 1 and self.box_size != 0:
+            self.name = self.read_str(self.box_size - self.offset - 1)
+        self.ignore_remained()  # reserved and name
+
+
+class MediaBox(Box):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'mdia'
+        self.mdhd_box = MDHDBox(reader)
+        self.offset += self.mdhd_box.offset
+        self.hdlr_box = HDLRBox(reader)
+        self.offset += self.hdlr_box.offset
+        self.ignore_remained()
+
+
 class TrackBox(Box):
 
     def __init__(self, reader, box_meta: BoxMeta=None):
@@ -173,7 +261,14 @@ class TrackBox(Box):
         """
         super().__init__(reader, box_meta)
         assert self.box_type == 'trak'
-        self.ignore_remained()  # TODO
+        self.tkhd_box = TKHDBox(reader)
+        self.offset += self.tkhd_box.box_size
+        box_size, box_type, offset, ignored_size = find_first_box_by_type(reader, wanted_box_type='mdia')
+        self.offset += ignored_size
+        self.media_box = MediaBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
+        self.offset += self.media_box.box_size
+        assert self.media_box is not None
+        self.ignore_remained()
 
 
 class MOOVBox(Box):
@@ -185,21 +280,36 @@ class MOOVBox(Box):
         super().__init__(reader, box_meta)
         assert self.box_type == 'moov'
         self.mvhd_box = MVHDBox(reader)
+        self.offset += self.mvhd_box.box_size
         self.track_box_list = []
-        while True:
+        while self.offset < self.box_size:
             box_size, box_type, offset = read_box_size_and_type(reader)
+            logging.debug(
+                'Find track box: box_size: {} bytes, box_type: {}, offset: {}'.format(box_size, box_type, offset))
             if box_type == 'trak':
                 self.track_box_list.append(
                     TrackBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
                 )
             else:
-                break
+                self.read(box_size - offset)
+            self.offset += box_size
 
 
 def parse(reader):
     # parse ftyp box
     ftyp_box = FTYPBox(reader)
     logging.debug('ftyp: {}'.format(ftyp_box.json()))
-    box_size, box_type, offset = find_moov_box(reader)
-    moov_box = MOOVBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
-    logging.debug('moov: {}'.format(moov_box.json()))
+    moov_box_list = []
+    try:
+        while True:
+            box_size, box_type, offset, _ = find_first_box_by_type(reader, wanted_box_type='moov')
+            moov_box = MOOVBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
+            moov_box_list.append(moov_box)
+    except EOF:
+        pass
+
+    if logging.getLogger().level == logging.DEBUG:
+        import time
+        time.sleep(1)
+        for moov_box in moov_box_list:
+            pprint(moov_box.json(), indent=2)
