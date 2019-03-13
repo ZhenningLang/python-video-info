@@ -213,7 +213,7 @@ class MDHDBox(HEADBox):
         assert self.box_type == 'mdhd'
         self.time_scale = self.read_int(4)
         self.duration = self.read_int(4)
-        self.fixed_duration = round(self.duration / self.time_scale, 2)
+        self.scaled_duration = round(self.duration / self.time_scale, 2)
         # self.language = self.read(2)
         # self.pre_defined = self.read(2)
         self.ignore_remained()
