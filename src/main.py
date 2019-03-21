@@ -9,19 +9,23 @@ from input import FileVideoReader, RemoteFileReader
 from type_checker import check_video_type, VideoTypeEnum, type_to_parser
 from utils import format_video_info, set_logging
 
-__git_url__ = 'https://github.com/JenningLang/python-video-info'
+__git_url__ = 'https://github.com/ZhenningLang/python-video-info'
 
 
 def format_help(formatted_help):
-    return formatted_help + '\nOr Visit: {} for more help\n'.format(__git_url__)
+    return f'{formatted_help}\n' \
+           f'Visit: {__git_url__} for more help\n'
 
 
 def read_args():
     parser = argparse.ArgumentParser(description='Get video info by PURE python codes')
-    parser.add_argument('video_location', nargs='?', help='the location of video (local path or url)')
-    parser.add_argument('--debug', action='store_const', const=True, default=False, help='using debug mode')
-    parser.add_argument('--json', action='store_const', const=True, default=False, help='json format output')
-    return parser.format_help(), parser.parse_args()
+    parser.add_argument(
+        'video_location', nargs='?', default='', help='the location of video (local path or url)')
+    parser.add_argument(
+        '--debug', action='store_const', const=True, default=False, help='using debug mode')
+    parser.add_argument(
+        '--json', action='store_const', const=True, default=False, help='json format output')
+    return format_help(parser.format_help()), parser.parse_args()
 
 
 def get_file_reader(loc):

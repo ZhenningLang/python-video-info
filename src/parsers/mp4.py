@@ -153,7 +153,7 @@ def find_first_box_by_type(reader, wanted_box_type: str):
         reader.read(box_size - offset)  # skip unused data
 
 
-class HEADBox(Box):
+class BasicHeadBox(Box):
 
     def __init__(self, reader, box_meta: BoxMeta=None):
         """
@@ -163,6 +163,15 @@ class HEADBox(Box):
         self.version = self.read_int(1)
         assert(self.version == 0)  # TODO: currently only support version=0
         self.flags = self.read_int(3)
+
+
+class HEADBox(BasicHeadBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
         self.creation_time = BASE_DATETIME + datetime.timedelta(seconds=self.read_int(4))
         self.modification_time = BASE_DATETIME + datetime.timedelta(seconds=self.read_int(4))
 
@@ -219,7 +228,7 @@ class MDHDBox(HEADBox):
         self.ignore_remained()
 
 
-class HDLRBox(Box):
+class HDLRBox(BasicHeadBox):
 
     def __init__(self, reader, box_meta: BoxMeta=None):
         """
@@ -227,15 +236,128 @@ class HDLRBox(Box):
         """
         super().__init__(reader, box_meta)
         assert self.box_type == 'hdlr'
-        self.version = self.read_int(1)
-        assert(self.version == 0)  # TODO: currently only support version=0
-        self.flags = self.read_int(3)
         self.read(4)  # self.pre_defined
         self.handler_type = self.read_str(4)  # vide, soun, hint
         self.read(12)  # reserved
         if self.box_size - self.offset > 1 and self.box_size != 0:
             self.name = self.read_str(self.box_size - self.offset - 1)
         self.ignore_remained()  # reserved and name
+
+
+class VMHDBox(BasicHeadBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'vmhd'
+        self.ignore_remained()  # graphics mode, opcolor
+
+
+class SMHDBox(BasicHeadBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'smhd'
+        self.ignore_remained()  # balanced, reserved
+
+
+class HMHDBox(BasicHeadBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'hmhd'
+        self.ignore_remained()
+
+
+class NMHDBox(BasicHeadBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'nmhd'
+        self.ignore_remained()
+
+
+class DINFBox(BasicHeadBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'dinf'
+        self.ignore_remained()
+
+
+class STSDBox(BasicHeadBox):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'stsd'
+        self.sample_description_number = self.read_int(4)
+        self.sample_descriptions = []
+        for _ in range(self.sample_description_number):
+            self.sample_descriptions.append({
+                'size': self.read_int(4),
+                'type': self.read_str(4),
+                'remained': self.read(6),
+                'ref_index': self.read(2),
+            })
+        self.ignore_remained()
+
+
+class STBLBox(Box):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'stbl'
+        self.stsd_box = STSDBox(reader)
+        self.offset += self.stsd_box.offset
+        self.ignore_remained()
+
+
+class MINFBox(Box):
+
+    def __init__(self, reader, box_meta: BoxMeta=None):
+        """
+        Side effect: reader offset change
+        """
+        super().__init__(reader, box_meta)
+        assert self.box_type == 'minf'
+
+        box_size, box_type, offset = read_box_size_and_type(reader)
+        if box_type == 'vmhd':
+            self.head_box = VMHDBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
+        elif box_type == 'smhd':
+            self.head_box = SMHDBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
+        elif box_type == 'hmhd':
+            self.head_box = HMHDBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
+        elif box_type == 'nmhd':
+            self.head_box = NMHDBox(reader, box_meta=BoxMeta(box_size, box_type, offset))
+        self.offset += self.head_box.offset
+
+        self.dinf_box = DINFBox(reader)
+        self.offset += self.dinf_box.offset
+        self.stbl_box = STBLBox(reader)
+        self.offset += self.stbl_box.offset
+
+        self.ignore_remained()
 
 
 class MediaBox(Box):
@@ -250,6 +372,9 @@ class MediaBox(Box):
         self.offset += self.mdhd_box.offset
         self.hdlr_box = HDLRBox(reader)
         self.offset += self.hdlr_box.offset
+        self.minf_box = MINFBox(reader)
+        self.offset += self.minf_box.offset
+
         self.ignore_remained()
 
 
